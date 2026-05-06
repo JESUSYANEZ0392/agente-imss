@@ -1,0 +1,5 @@
+# Dependencias adicionales solo para compilar el .exe
+# (no necesarias en el requirements.txt principal)
+pyinstaller==6.8.0
+pillow==10.3.0
+pystray==0.19.5

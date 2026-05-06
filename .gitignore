@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.db
+.env
+uploads/
+installer/
+build/
+dist/
+*.spec
