@@ -1,5 +1,6 @@
 .venv/
 __pycache__/
+*.pyc
 *.db
 .env
 uploads/
@@ -7,3 +8,7 @@ installer/
 build/
 dist/
 *.spec
+reportes/
+*.xlsx
+*.pdf
+agente_imss.db

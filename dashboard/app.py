@@ -14,7 +14,19 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # Asegurar que el directorio raíz está en el path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT))
+
+# Detectar si corremos en Streamlit Cloud (sin soporte de Playwright)
+try:
+    import playwright
+    PLAYWRIGHT_OK = True
+except ImportError:
+    PLAYWRIGHT_OK = False
+
+# Garantizar carpetas necesarias
+(ROOT / "uploads").mkdir(exist_ok=True)
+(ROOT / "reportes").mkdir(exist_ok=True)
 
 from database.connection import init_db, get_session
 from database.models import Patron, Trabajador, RegistroSalario, PagoSIPARE, Incapacidad
@@ -158,7 +170,7 @@ elif menu == "📁 Cargar SUA":
 
     if archivo:
         # Guardar temporalmente
-        tmp_path = os.path.join("uploads", archivo.name)
+        tmp_path = str(ROOT / "uploads" / archivo.name)
         with open(tmp_path, "wb") as f:
             f.write(archivo.read())
 
@@ -359,6 +371,22 @@ elif menu == "💰 Calcular SDI":
 # ═══════════════════════════════════════════════════════════════════════════
 elif menu == "🌐 IDSE / SIPARE":
     st.title("🌐 IDSE y SIPARE")
+
+    if not PLAYWRIGHT_OK:
+        st.info(
+            "### Esta función requiere la versión instalada\n\n"
+            "La consulta automática de IDSE y SIPARE se conecta directamente "
+            "a los portales del IMSS usando automatización de navegador.\n\n"
+            "**Esta función está disponible en la versión de escritorio** "
+            "(instalación local en tu computadora).\n\n"
+            "La versión web incluye:\n"
+            "- ✅ Análisis de archivos SUA\n"
+            "- ✅ Calculadora de SDI\n"
+            "- ✅ Análisis de incapacidades\n"
+            "- ✅ Prima de riesgo de trabajo\n"
+            "- ✅ Comparativos entre períodos"
+        )
+        st.stop()
 
     with get_session() as s:
         _p = s.query(Patron).filter_by(id=patron_id_activo).first() if patron_id_activo else None
