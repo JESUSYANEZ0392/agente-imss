@@ -49,23 +49,31 @@ class SIPAREScraper:
 
     async def _login(self):
         page = self._page
+        # URL real del portal SIPARE
         await page.goto(URL_SIPARE)
-        await page.wait_for_load_state("networkidle")
+        await page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
 
-        # Llenar RFC/usuario y contraseña
-        await page.fill("input[name='usuario'], #rfc, input[type='text']", self.usuario)
-        await page.fill("input[name='password'], #password, input[type='password']", self.password)
+        # Llenar usuario (RFC) y contraseña
+        await page.fill(
+            "input[name='j_username'], input[name='usuario'], #usuario, input[type='text']:first-of-type",
+            self.usuario
+        )
+        await page.fill(
+            "input[name='j_password'], input[name='password'], #password, input[type='password']",
+            self.password
+        )
 
-        if self.cert_path and os.path.exists(self.cert_path):
-            cert_input = page.locator("input[type='file']")
-            if await cert_input.count() > 0:
-                await cert_input.set_input_files(self.cert_path)
+        await page.click(
+            "input[type='submit'], button[type='submit'], #btnEntrar, button:has-text('Entrar'), button:has-text('Iniciar')"
+        )
+        await page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
 
-        await page.click("button[type='submit'], input[type='submit'], #btnEntrar")
-        await page.wait_for_load_state("networkidle")
-
-        if "error" in page.url.lower():
-            raise RuntimeError("Error de autenticación en SIPARE.")
+        # Verificar login fallido
+        if await page.locator(".error, .mensajeError, #mensajeError").count() > 0:
+            msg = await page.locator(".error, .mensajeError, #mensajeError").first.inner_text()
+            raise RuntimeError(f"Error de autenticación SIPARE: {msg}")
+        if "index.jsp" in page.url and "error" in (await page.content()).lower():
+            raise RuntimeError("Usuario o contraseña incorrectos en SIPARE.")
 
     async def obtener_referencia_pago(self, anio: int, bimestre: int) -> dict:
         """
@@ -90,7 +98,7 @@ class SIPAREScraper:
                 page = self._page
 
                 # Navegar a generación de referencia
-                await page.goto(URL_SIPARE + "generarReferencia")
+                await page.goto(URL_SIPARE.replace("index.jsp", "generarReferencia.jsp"))
                 await page.wait_for_load_state("networkidle")
 
                 # Seleccionar año
@@ -144,7 +152,7 @@ class SIPAREScraper:
 
             try:
                 async with page.expect_download(timeout=60000) as dl:
-                    await page.goto(URL_SIPARE + f"descargar?anio={anio}&bimestre={bimestre}")
+                    await page.goto(URL_SIPARE.replace("index.jsp", f"descargar?anio={anio}&bimestre={bimestre}"))
                     download = await dl.value
 
                 nombre = (f"SIPARE_{self.registro_patronal}_{anio}_B{bimestre}_"

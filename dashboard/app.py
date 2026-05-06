@@ -453,23 +453,28 @@ elif menu == "🌐 IDSE / SIPARE":
 
     with tab_sipare:
         st.subheader("SIPARE — Líneas de Captura y Pagos")
+        st.caption("Las credenciales de SIPARE son distintas a las de IDSE.")
+
         col1, col2 = st.columns(2)
         anio_sel = col1.selectbox("Año", list(range(date.today().year, 2019, -1)))
         bim_sel = col2.selectbox("Bimestre", [1, 2, 3, 4, 5, 6],
                                  format_func=lambda b: f"B{b} — {['Ene-Feb','Mar-Abr','May-Jun','Jul-Ago','Sep-Oct','Nov-Dic'][b-1]}")
 
-        password_sipare = st.text_input("Contraseña SIPARE", type="password", key="pw_sipare")
+        col3, col4 = st.columns(2)
+        usuario_sipare  = col3.text_input("Usuario SIPARE", key="usr_sipare",
+                                          help="Generalmente es el RFC del patrón")
+        password_sipare = col4.text_input("Contraseña SIPARE", type="password", key="pw_sipare")
 
         col_ref, col_dl = st.columns(2)
         if col_ref.button("📋 Obtener Referencia de Pago"):
-            if not password_sipare:
-                st.error("Ingresa la contraseña")
+            if not usuario_sipare or not password_sipare:
+                st.error("Ingresa usuario y contraseña SIPARE")
             else:
                 from modules.sipare_scraper import obtener_referencia_sync
                 with st.spinner("Consultando SIPARE..."):
                     try:
                         ref = obtener_referencia_sync(
-                            patron_dict["registro_patronal"], patron_dict["usuario_idse"],
+                            patron_dict["registro_patronal"], usuario_sipare,
                             password_sipare, cert_path, anio_sel, bim_sel
                         )
                         if ref.get("error"):
@@ -481,14 +486,14 @@ elif menu == "🌐 IDSE / SIPARE":
                         st.error(f"Error: {e}")
 
         if col_dl.button("📥 Descargar PDF SIPARE"):
-            if not password_sipare:
-                st.error("Ingresa la contraseña")
+            if not usuario_sipare or not password_sipare:
+                st.error("Ingresa usuario y contraseña SIPARE")
             else:
                 from modules.sipare_scraper import descargar_sipare_sync
                 with st.spinner("Descargando PDF..."):
                     try:
                         ruta = descargar_sipare_sync(
-                            patron_dict["registro_patronal"], patron_dict["usuario_idse"],
+                            patron_dict["registro_patronal"], usuario_sipare,
                             password_sipare, cert_path, anio_sel, bim_sel
                         )
                         st.success(f"✅ Descargado: {ruta}")

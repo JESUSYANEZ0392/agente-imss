@@ -13,6 +13,6 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # URLs de portales IMSS
-URL_IDSE = "https://idse.imss.gob.mx/imss/faces/pages/inicio.xhtml"
-URL_SIPARE = "https://sipare.imss.gob.mx/"
+URL_IDSE   = "https://idse.imss.gob.mx/imss/"
+URL_SIPARE = "https://sipare.imss.gob.mx/sipare_webapp/index.jsp"
 URL_IMSS_DIGITAL = "https://serviciosdigitales.imss.gob.mx/"
