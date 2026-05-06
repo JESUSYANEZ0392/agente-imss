@@ -1,14 +1,14 @@
 """
 Automatización del portal SIPARE (Sistema de Pago Referenciado - IMSS).
 Descarga líneas de captura y comprobantes de pago bimestral.
+Usa la API SÍNCRONA de Playwright (compatible con Streamlit en Windows).
 """
-import asyncio
 import os
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from playwright.async_api import async_playwright, Page, Browser, TimeoutError as PWTimeout
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 from config import URL_SIPARE, SCRAPING_TIMEOUT, HEADLESS, REPORTS_DIR
 
@@ -32,54 +32,49 @@ class SIPAREScraper:
         self.password = password
         self.cert_path = cert_path
         self.timeout_ms = SCRAPING_TIMEOUT * 1000
-        self._browser: Optional[Browser] = None
-        self._page: Optional[Page] = None
 
-    async def _iniciar_browser(self, playwright):
-        self._browser = await playwright.chromium.launch(
-            headless=HEADLESS,
-            args=["--no-sandbox"],
-        )
-        context = await self._browser.new_context(
+    def _iniciar_browser(self, playwright):
+        try:
+            browser = playwright.chromium.launch(
+                channel="chrome",
+                headless=HEADLESS,
+                args=["--no-sandbox"],
+            )
+        except Exception:
+            browser = playwright.chromium.launch(
+                headless=HEADLESS,
+                args=["--no-sandbox"],
+            )
+        context = browser.new_context(
             viewport={"width": 1366, "height": 768},
             accept_downloads=True,
         )
-        self._page = await context.new_page()
-        self._page.set_default_timeout(self.timeout_ms)
+        page = context.new_page()
+        page.set_default_timeout(self.timeout_ms)
+        return browser, page
 
-    async def _login(self):
-        page = self._page
-        # URL real del portal SIPARE
-        await page.goto(URL_SIPARE)
-        await page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
+    def _login(self, page):
+        page.goto(URL_SIPARE)
+        page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
 
-        # Llenar usuario (RFC) y contraseña
-        await page.fill(
+        page.fill(
             "input[name='j_username'], input[name='usuario'], #usuario, input[type='text']:first-of-type",
             self.usuario
         )
-        await page.fill(
+        page.fill(
             "input[name='j_password'], input[name='password'], #password, input[type='password']",
             self.password
         )
-
-        await page.click(
+        page.click(
             "input[type='submit'], button[type='submit'], #btnEntrar, button:has-text('Entrar'), button:has-text('Iniciar')"
         )
-        await page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
+        page.wait_for_load_state("networkidle", timeout=self.timeout_ms)
 
-        # Verificar login fallido
-        if await page.locator(".error, .mensajeError, #mensajeError").count() > 0:
-            msg = await page.locator(".error, .mensajeError, #mensajeError").first.inner_text()
+        if page.locator(".error, .mensajeError, #mensajeError").count() > 0:
+            msg = page.locator(".error, .mensajeError, #mensajeError").first.inner_text()
             raise RuntimeError(f"Error de autenticación SIPARE: {msg}")
-        if "index.jsp" in page.url and "error" in (await page.content()).lower():
-            raise RuntimeError("Usuario o contraseña incorrectos en SIPARE.")
 
-    async def obtener_referencia_pago(self, anio: int, bimestre: int) -> dict:
-        """
-        Genera/consulta la línea de captura para el bimestre indicado.
-        Retorna dict con línea de captura, monto, fecha límite.
-        """
+    def obtener_referencia_pago(self, anio: int, bimestre: int) -> dict:
         resultado = {
             "registro_patronal": self.registro_patronal,
             "anio": anio,
@@ -91,101 +86,90 @@ class SIPAREScraper:
             "error": None,
         }
 
-        async with async_playwright() as pw:
-            await self._iniciar_browser(pw)
+        with sync_playwright() as pw:
+            browser, page = self._iniciar_browser(pw)
             try:
-                await self._login()
-                page = self._page
+                self._login(page)
 
-                # Navegar a generación de referencia
-                await page.goto(URL_SIPARE.replace("index.jsp", "generarReferencia.jsp"))
-                await page.wait_for_load_state("networkidle")
+                page.goto(URL_SIPARE.replace("index.jsp", "generarReferencia.jsp"))
+                page.wait_for_load_state("networkidle")
 
-                # Seleccionar año
                 anio_sel = page.locator("select[name='anio'], #anio")
-                if await anio_sel.count() > 0:
-                    await anio_sel.select_option(str(anio))
+                if anio_sel.count() > 0:
+                    anio_sel.select_option(str(anio))
 
-                # Seleccionar bimestre
                 bim_sel = page.locator("select[name='bimestre'], #bimestre")
-                if await bim_sel.count() > 0:
-                    await bim_sel.select_option(str(bimestre))
+                if bim_sel.count() > 0:
+                    bim_sel.select_option(str(bimestre))
 
-                await page.click("#btnGenerar, button:has-text('Generar')")
-                await page.wait_for_load_state("networkidle")
+                page.click("#btnGenerar, button:has-text('Generar')")
+                page.wait_for_load_state("networkidle")
 
-                # Extraer línea de captura y monto
                 lc_elem = page.locator("#lineaCaptura, .linea-captura, td:has-text('Línea de captura') + td")
-                if await lc_elem.count() > 0:
-                    resultado["linea_captura"] = (await lc_elem.first.inner_text()).strip()
+                if lc_elem.count() > 0:
+                    resultado["linea_captura"] = lc_elem.first.inner_text().strip()
 
                 monto_elem = page.locator("#montoTotal, .monto-total")
-                if await monto_elem.count() > 0:
-                    monto_str = (await monto_elem.first.inner_text()).strip()
-                    monto_str = monto_str.replace("$", "").replace(",", "").strip()
+                if monto_elem.count() > 0:
+                    monto_str = monto_elem.first.inner_text().strip().replace("$", "").replace(",", "")
                     try:
                         resultado["monto_total"] = float(monto_str)
                     except ValueError:
                         pass
 
                 fecha_elem = page.locator("#fechaLimite, .fecha-limite")
-                if await fecha_elem.count() > 0:
-                    resultado["fecha_limite"] = (await fecha_elem.first.inner_text()).strip()
+                if fecha_elem.count() > 0:
+                    resultado["fecha_limite"] = fecha_elem.first.inner_text().strip()
 
             except Exception as e:
                 resultado["error"] = str(e)
             finally:
-                await self._browser.close()
+                browser.close()
 
         return resultado
 
-    async def descargar_sipare_pdf(self, anio: int, bimestre: int,
-                                   destino: Optional[str] = None) -> str:
-        """Descarga el PDF SIPARE del bimestre indicado."""
+    def descargar_sipare_pdf(self, anio: int, bimestre: int,
+                             destino: Optional[str] = None) -> str:
         destino = destino or REPORTS_DIR
         Path(destino).mkdir(parents=True, exist_ok=True)
 
-        async with async_playwright() as pw:
-            await self._iniciar_browser(pw)
-            await self._login()
-            page = self._page
-
+        with sync_playwright() as pw:
+            browser, page = self._iniciar_browser(pw)
             try:
-                async with page.expect_download(timeout=60000) as dl:
-                    await page.goto(URL_SIPARE.replace("index.jsp", f"descargar?anio={anio}&bimestre={bimestre}"))
-                    download = await dl.value
+                self._login(page)
+
+                with page.expect_download(timeout=60000) as dl:
+                    page.goto(URL_SIPARE.replace("index.jsp", f"descargar?anio={anio}&bimestre={bimestre}"))
+                download = dl.value
 
                 nombre = (f"SIPARE_{self.registro_patronal}_{anio}_B{bimestre}_"
                           f"{datetime.now().strftime('%Y%m%d')}.pdf")
                 ruta = os.path.join(destino, nombre)
-                await download.save_as(ruta)
+                download.save_as(ruta)
             finally:
-                await self._browser.close()
+                browser.close()
 
         return ruta
 
-    async def consultar_historico_pagos(self, anio_inicio: int, anio_fin: int) -> list[dict]:
-        """Consulta el histórico de pagos bimestrales en el rango de años."""
+    def consultar_historico_pagos(self, anio_inicio: int, anio_fin: int) -> list[dict]:
         pagos = []
-        async with async_playwright() as pw:
-            await self._iniciar_browser(pw)
-            await self._login()
-            page = self._page
-
+        with sync_playwright() as pw:
+            browser, page = self._iniciar_browser(pw)
             try:
-                await page.goto(URL_SIPARE + "historicoPagos")
-                await page.wait_for_load_state("networkidle")
+                self._login(page)
+                page.goto(URL_SIPARE + "historicoPagos")
+                page.wait_for_load_state("networkidle")
 
-                await page.fill("#anioInicio", str(anio_inicio))
-                await page.fill("#anioFin", str(anio_fin))
-                await page.click("#btnConsultar, button:has-text('Consultar')")
-                await page.wait_for_load_state("networkidle")
+                page.fill("#anioInicio", str(anio_inicio))
+                page.fill("#anioFin", str(anio_fin))
+                page.click("#btnConsultar, button:has-text('Consultar')")
+                page.wait_for_load_state("networkidle")
 
-                filas = await page.query_selector_all("table tbody tr")
+                filas = page.query_selector_all("table tbody tr")
                 for fila in filas:
-                    celdas = await fila.query_selector_all("td")
+                    celdas = fila.query_selector_all("td")
                     if len(celdas) >= 5:
-                        textos = [await c.inner_text() for c in celdas]
+                        textos = [c.inner_text() for c in celdas]
                         pagos.append({
                             "periodo": textos[0].strip(),
                             "linea_captura": textos[1].strip() if len(textos) > 1 else "",
@@ -196,28 +180,18 @@ class SIPAREScraper:
             except PWTimeout:
                 pass
             finally:
-                await self._browser.close()
+                browser.close()
 
         return pagos
 
 
-def _run_en_hilo(coro):
-    """Ejecuta una coroutine en un hilo separado para evitar conflictos con el event loop de Streamlit."""
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(asyncio.run, coro)
-        return future.result()
-
-
-# API síncrona
+# API directa para Streamlit (sin asyncio)
 def obtener_referencia_sync(registro: str, usuario: str, password: str,
                             cert_path: str, anio: int, bimestre: int) -> dict:
-    scraper = SIPAREScraper(registro, usuario, password, cert_path)
-    return _run_en_hilo(scraper.obtener_referencia_pago(anio, bimestre))
+    return SIPAREScraper(registro, usuario, password, cert_path).obtener_referencia_pago(anio, bimestre)
 
 
 def descargar_sipare_sync(registro: str, usuario: str, password: str,
                           cert_path: str, anio: int, bimestre: int,
                           destino: Optional[str] = None) -> str:
-    scraper = SIPAREScraper(registro, usuario, password, cert_path)
-    return _run_en_hilo(scraper.descargar_sipare_pdf(anio, bimestre, destino))
+    return SIPAREScraper(registro, usuario, password, cert_path).descargar_sipare_pdf(anio, bimestre, destino)
