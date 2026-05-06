@@ -10,4 +10,3 @@ requests==2.32.3
 alembic==1.13.1
 watchdog==4.0.1
 plotly==5.22.0
-greenlet==3.1.1
