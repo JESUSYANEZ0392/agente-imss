@@ -1,4 +1,4 @@
-playwright==1.44.0
+playwright==1.51.0
 sqlalchemy==2.0.30
 pandas==2.2.2
 streamlit==1.35.0
@@ -11,3 +11,4 @@ requests==2.32.3
 alembic==1.13.1
 watchdog==4.0.1
 plotly==5.22.0
+greenlet==3.1.1
