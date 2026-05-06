@@ -201,15 +201,23 @@ class SIPAREScraper:
         return pagos
 
 
+def _run_en_hilo(coro):
+    """Ejecuta una coroutine en un hilo separado para evitar conflictos con el event loop de Streamlit."""
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(asyncio.run, coro)
+        return future.result()
+
+
 # API síncrona
 def obtener_referencia_sync(registro: str, usuario: str, password: str,
                             cert_path: str, anio: int, bimestre: int) -> dict:
     scraper = SIPAREScraper(registro, usuario, password, cert_path)
-    return asyncio.run(scraper.obtener_referencia_pago(anio, bimestre))
+    return _run_en_hilo(scraper.obtener_referencia_pago(anio, bimestre))
 
 
 def descargar_sipare_sync(registro: str, usuario: str, password: str,
                           cert_path: str, anio: int, bimestre: int,
                           destino: Optional[str] = None) -> str:
     scraper = SIPAREScraper(registro, usuario, password, cert_path)
-    return asyncio.run(scraper.descargar_sipare_pdf(anio, bimestre, destino))
+    return _run_en_hilo(scraper.descargar_sipare_pdf(anio, bimestre, destino))

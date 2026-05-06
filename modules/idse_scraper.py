@@ -181,14 +181,22 @@ class IDSEScraper:
         return incapacidades
 
 
+def _run_en_hilo(coro):
+    """Ejecuta una coroutine en un hilo separado para evitar conflictos con el event loop de Streamlit."""
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(asyncio.run, coro)
+        return future.result()
+
+
 # API síncrona para usar desde Streamlit
 def consultar_movimientos_sync(registro: str, usuario: str, password: str,
                                cert_path: str, fecha_inicio: date, fecha_fin: date) -> list[dict]:
     scraper = IDSEScraper(registro, usuario, password, cert_path)
-    return asyncio.run(scraper.consultar_movimientos(fecha_inicio, fecha_fin))
+    return _run_en_hilo(scraper.consultar_movimientos(fecha_inicio, fecha_fin))
 
 
 def consultar_incapacidades_sync(registro: str, usuario: str, password: str,
                                  cert_path: str, fecha_inicio: date, fecha_fin: date) -> list[dict]:
     scraper = IDSEScraper(registro, usuario, password, cert_path)
-    return asyncio.run(scraper.consultar_incapacidades(fecha_inicio, fecha_fin))
+    return _run_en_hilo(scraper.consultar_incapacidades(fecha_inicio, fecha_fin))

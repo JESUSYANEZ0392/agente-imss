@@ -1,6 +1,6 @@
-sqlalchemy==1.4.52
+sqlalchemy==2.0.36
 pandas==2.2.2
-streamlit==1.35.0
+streamlit==1.41.1
 openpyxl==3.1.4
 pdfplumber==0.11.1
 python-dotenv==1.0.1
@@ -9,3 +9,4 @@ cryptography==42.0.8
 requests==2.32.3
 plotly==5.22.0
 xlsxwriter==3.2.0
+pillow==10.4.0
