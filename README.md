@@ -3,11 +3,8 @@ title: Agente IMSS
 emoji: 🏛️
 colorFrom: green
 colorTo: blue
-sdk: streamlit
-sdk_version: 1.41.1
-app_file: dashboard/app.py
+sdk: docker
 pinned: false
-python_version: "3.11"
 ---
 
 # Agente Inteligente IMSS
