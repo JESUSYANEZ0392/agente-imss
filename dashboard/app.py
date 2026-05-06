@@ -114,7 +114,7 @@ if menu == "🏠 Dashboard":
                 st.markdown(
                     f'<div class="{color}"><b>{a["patron"]}</b> | {a["periodo"]} | '
                     f'${a["monto"]:,.2f} | Límite: {a["fecha_limite"]} | '
-                    f'{"⛔ VENCIDO" if a["vencido"] else f"📅 {a["dias_restantes"]} días"}</div>',
+                    f'{"⛔ VENCIDO" if a["vencido"] else ("📅 " + str(a["dias_restantes"]) + " días")}</div>',
                     unsafe_allow_html=True
                 )
 
@@ -431,7 +431,10 @@ elif menu == "🌐 IDSE / SIPARE":
                         else:
                             st.info("Sin movimientos en el período seleccionado.")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        import traceback
+                        st.error(f"Error al conectar con IDSE: {e}")
+                        with st.expander("Detalle técnico"):
+                            st.code(traceback.format_exc())
 
         if col_inc.button("🏥 Consultar Incapacidades"):
             if not password_idse:
@@ -449,7 +452,10 @@ elif menu == "🌐 IDSE / SIPARE":
                         else:
                             st.info("Sin incapacidades en el período.")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        import traceback
+                        st.error(f"Error al consultar incapacidades: {e}")
+                        with st.expander("Detalle técnico"):
+                            st.code(traceback.format_exc())
 
     with tab_sipare:
         st.subheader("SIPARE — Líneas de Captura y Pagos")
@@ -478,12 +484,15 @@ elif menu == "🌐 IDSE / SIPARE":
                             password_sipare, cert_path, anio_sel, bim_sel
                         )
                         if ref.get("error"):
-                            st.error(ref["error"])
+                            st.error(f"Error SIPARE: {ref['error']}")
                         else:
                             st.success("✅ Referencia obtenida")
                             st.json(ref)
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        import traceback
+                        st.error(f"Error al conectar con SIPARE: {e}")
+                        with st.expander("Detalle técnico"):
+                            st.code(traceback.format_exc())
 
         if col_dl.button("📥 Descargar PDF SIPARE"):
             if not usuario_sipare or not password_sipare:
@@ -502,7 +511,10 @@ elif menu == "🌐 IDSE / SIPARE":
                                                file_name=os.path.basename(ruta),
                                                mime="application/pdf")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        import traceback
+                        st.error(f"Error al descargar PDF: {e}")
+                        with st.expander("Detalle técnico"):
+                            st.code(traceback.format_exc())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
