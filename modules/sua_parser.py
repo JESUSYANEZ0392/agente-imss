@@ -19,10 +19,17 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Optional
 
-# Tarifas IMSS 2025 (LSS Arts. 106-168)
-UMA_DIARIA_2025   = 117.31
-UMA_MENSUAL_2025  = UMA_DIARIA_2025 * 30.4   # 3,300.53
-TOPE_SDI_25_UMAS  = UMA_DIARIA_2025 * 25      # 2,714.25
+# Tarifas 2026 (LSS Arts. 106-168 / Ley del INFONAVIT)
+UMA_DIARIA_2026   = 117.31
+UMA_MENSUAL_2026  = UMA_DIARIA_2026 * 30.4   # 3,566.22
+TOPE_SDI_25_UMAS  = UMA_DIARIA_2026 * 25      # 2,932.75
+
+# UMI 2026 — base para aportaciones INFONAVIT (Art. 29 Ley INFONAVIT)
+# La UMI es la unidad de medida propia del INFONAVIT, distinta de la UMA
+UMI_DIARIA_2026   = 100.81
+UMI_MENSUAL_2026  = UMI_DIARIA_2026 * 30.4   # 3,064.62
+# Tope INFONAVIT: 25 VSM (antes) → ahora 25 UMI mensuales
+TOPE_INFONAVIT_MENSUAL = UMI_MENSUAL_2026 * 25  # 76,615.50 mensual
 
 # Tasas patronales por ramo (como decimal)
 _TASA_EMYM_CF      = 0.2040   # Cuota fija EyM: 20.40% de UMA mensual por trabajador/mes
@@ -36,7 +43,7 @@ _TASA_GUARD        = 0.0100   # Guarderías: patronal
 _TASA_RETIRO       = 0.0200   # Retiro: patronal
 _TASA_CES_PAT      = 0.03150  # Cesantía y Vejez: patronal
 _TASA_CES_OBR      = 0.01125  # Cesantía y Vejez: obrera
-_TASA_INFONAVIT    = 0.0500   # INFONAVIT: patronal
+_TASA_INFONAVIT    = 0.0500   # INFONAVIT: 5% sobre SDI topado a 25 UMI (Art. 29 Ley INFONAVIT)
 
 
 # ── Modelos de datos ─────────────────────────────────────────────────────────

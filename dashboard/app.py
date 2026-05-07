@@ -323,10 +323,12 @@ elif menu == "💰 Calcular SDI":
             col_c.metric("SDI", f"${r['sdi']:,.2f}",
                          delta=f"${r['sdi'] - r['salario_diario_base']:,.2f}")
 
-            col_d, col_e = st.columns(2)
+            col_d, col_e, col_f = st.columns(3)
             col_d.metric("Días de Vacaciones (LFT 2023)", r["dias_vacaciones"])
             col_e.metric("SDI Topado IMSS (25 UMAs)", f"${r['sdi_topado_imss']:,.2f}",
                          delta="Igual" if r["sdi"] <= r["tope_25_umas"] else "⚠️ Topado")
+            col_f.metric("SDI Topado INFONAVIT (25 UMI)", f"${r['sdi_topado_infonavit']:,.2f}",
+                         delta=f"Aportación: ${r['aportacion_infonavit_diaria']:,.2f}/día")
 
             with st.expander("Desglose partes proporcionales"):
                 df_desglose = pd.DataFrame([

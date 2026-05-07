@@ -50,9 +50,14 @@ class Prestaciones:
     # Tipo de prestaciones
     tipo: str = "ley"                     # "ley" o "superiores"
 
-    # UMA vigente (actualizar cada año)
-    uma_diaria: float = 117.31            # UMA 2026
+    # UMA vigente 2026 — base para cuotas IMSS (Art. 27 LSS)
+    uma_diaria: float = 117.31
     limite_veces_uma: float = 25.0        # Tope IMSS = 25 UMAs
+
+    # UMI vigente 2026 — base para aportaciones INFONAVIT (Art. 29 Ley INFONAVIT)
+    # La UMI es independiente de la UMA y tiene su propio valor
+    umi_diaria: float = 100.81
+    limite_veces_umi: float = 25.0        # Tope INFONAVIT = 25 UMI
 
 
 def calcular_sdi(p: Prestaciones) -> dict:
@@ -90,9 +95,14 @@ def calcular_sdi(p: Prestaciones) -> dict:
     sdi = sd + total_pp
     fi = round(sdi / sd, 6) if sd > 0 else 1.0
 
-    # Tope IMSS: 25 UMAs diarias
-    tope = p.uma_diaria * p.limite_veces_uma
-    sdi_topado = min(sdi, tope)
+    # Tope IMSS: 25 UMAs diarias (para cuotas IMSS)
+    tope_imss = p.uma_diaria * p.limite_veces_uma
+    sdi_topado = min(sdi, tope_imss)
+
+    # Tope INFONAVIT: 25 UMI diarias (Art. 29 Ley INFONAVIT — usa UMI, no UMA)
+    tope_infonavit = p.umi_diaria * p.limite_veces_umi
+    sdi_topado_infonavit = min(sdi, tope_infonavit)
+    aportacion_infonavit_diaria = round(sdi_topado_infonavit * 0.05, 2)
 
     return {
         "salario_diario_base": round(sd, 2),
@@ -107,12 +117,17 @@ def calcular_sdi(p: Prestaciones) -> dict:
         "fondo_ahorro_integrable_pp": round(fa_integrable, 6),
         "otros_pp": round(otros, 6),
         "total_partes_proporcionales": round(total_pp, 6),
-        # Resultado
+        # Resultado IMSS (base UMA)
         "factor_integracion": fi,
         "sdi": round(sdi, 2),
         "uma_diaria": p.uma_diaria,
-        "tope_25_umas": round(tope, 2),
+        "tope_25_umas": round(tope_imss, 2),
         "sdi_topado_imss": round(sdi_topado, 2),
+        # Resultado INFONAVIT (base UMI — distinto del tope IMSS)
+        "umi_diaria": p.umi_diaria,
+        "tope_25_umi": round(tope_infonavit, 2),
+        "sdi_topado_infonavit": round(sdi_topado_infonavit, 2),
+        "aportacion_infonavit_diaria": aportacion_infonavit_diaria,
         "tipo_prestaciones": p.tipo,
     }
 

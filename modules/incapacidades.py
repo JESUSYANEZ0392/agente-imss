@@ -240,6 +240,13 @@ def calcular_impacto_prima(
 
     prima_sin = r_sin["prima_final_pct"]
     prima_con = r_con["prima_final_pct"]
+
+    # Garantizar cap ±1 punto porcentual respecto a prima ACTUAL del usuario (Art. 74 LSS)
+    prima_con = min(prima_con, prima_actual_pct + 1.0)
+    prima_con = max(prima_con, prima_actual_pct - 1.0)
+    clase_info_local = CLASES_RIESGO[clase]
+    prima_con = max(clase_info_local["prima_min"], min(prima_con, clase_info_local["prima_max"]))
+
     diferencia = round(prima_con - prima_sin, 5)
     costo_extra = round((diferencia / 100) * masa_salarial_anual, 2)
 

@@ -61,14 +61,14 @@ def calcular_prima_riesgo(
     # Limitar entre min y max de la clase
     prima_final = max(pmin, min(prima_calculada, pmax))
 
-    # Variación vs prima anterior (máximo ±1% Art. 74)
+    # Variación vs prima anterior — Art. 74 LSS: máximo ±1 punto porcentual
+    # Las primas están en decimal (0.01 = 1 punto porcentual)
     if prima_anterior is not None:
-        variacion = prima_final - prima_anterior
-        if variacion > 0.01:
-            prima_final = prima_anterior + 0.01
-        elif variacion < -0.01:
-            prima_final = prima_anterior - 0.01
+        limite_sup = prima_anterior + 0.01   # Máximo sube 1 punto porcentual
+        limite_inf = prima_anterior - 0.01   # Máximo baja 1 punto porcentual
+        prima_final = max(limite_inf, min(prima_final, limite_sup))
         prima_final = max(pmin, min(prima_final, pmax))
+        variacion = prima_final - prima_anterior
     else:
         variacion = None
 
