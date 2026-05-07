@@ -20,7 +20,7 @@ from datetime import date, datetime
 from typing import Optional
 
 # Tarifas IMSS 2025 (LSS Arts. 106-168)
-UMA_DIARIA_2025   = 108.57
+UMA_DIARIA_2025   = 117.31
 UMA_MENSUAL_2025  = UMA_DIARIA_2025 * 30.4   # 3,300.53
 TOPE_SDI_25_UMAS  = UMA_DIARIA_2025 * 25      # 2,714.25
 

@@ -44,8 +44,8 @@ from reports.exporter import (
 
 # ── Configuración página ─────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Agente IMSS",
-    page_icon="🏛️",
+    page_title="SocialSync — Agente IMSS",
+    page_icon="🟢",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -67,9 +67,10 @@ st.markdown("""
 init_db()
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/IMSS_logo.svg/200px-IMSS_logo.svg.png",
-                 width=120)
-st.sidebar.title("Agente IMSS")
+st.sidebar.image("https://socialsyncio.netlify.app/favicon.ico",
+                 width=60)
+st.sidebar.title("SocialSync")
+st.sidebar.caption("Agente IMSS Inteligente")
 
 menu = st.sidebar.radio("Módulo", [
     "🏠 Dashboard",
@@ -280,6 +281,9 @@ elif menu == "📁 Cargar SUA":
 elif menu == "💰 Calcular SDI":
     st.title("💰 Calculadora de Salario Diario Integrado")
 
+    # Valores vigentes 2026
+    st.info("**Valores vigentes 2026:** UMA diaria $117.31 MXN | UMI diaria $100.81 MXN")
+
     tab1, tab2 = st.tabs(["Individual", "Por lote (Excel/CSV)"])
 
     with tab1:
@@ -287,7 +291,7 @@ elif menu == "💰 Calcular SDI":
         with col1:
             sd = st.number_input("Salario Diario Base ($)", min_value=0.0, value=500.0, step=10.0)
             anios = st.number_input("Años de Servicio", min_value=0, max_value=50, value=1)
-            uma = st.number_input("UMA diaria vigente ($)", value=108.57, step=0.01)
+            uma = st.number_input("UMA diaria vigente ($)", value=117.31, step=0.01)
         with col2:
             tipo = st.radio("Tipo de prestaciones", ["ley", "superiores"])
             dias_ag = st.number_input("Días de aguinaldo", min_value=15, value=15, step=1)
@@ -340,7 +344,7 @@ elif menu == "💰 Calcular SDI":
                 "Columnas opcionales: dias_aguinaldo, prima_vacacional_pct, "
                 "vale_despensa_diario, fondo_ahorro_pct.")
         archivo_batch = st.file_uploader("Seleccionar archivo", type=["xlsx", "csv"])
-        uma_batch = st.number_input("UMA diaria ($)", value=108.57, key="uma_batch")
+        uma_batch = st.number_input("UMA diaria ($)", value=117.31, key="uma_batch")
 
         if archivo_batch:
             if archivo_batch.name.endswith(".csv"):

@@ -51,7 +51,7 @@ class Prestaciones:
     tipo: str = "ley"                     # "ley" o "superiores"
 
     # UMA vigente (actualizar cada año)
-    uma_diaria: float = 108.57            # UMA 2024
+    uma_diaria: float = 117.31            # UMA 2026
     limite_veces_uma: float = 25.0        # Tope IMSS = 25 UMAs
 
 
@@ -134,7 +134,7 @@ def calcular_sdi_batch(trabajadores: list[dict]) -> list[dict]:
             bono_productividad_diario=t.get("bono_productividad_diario", 0),
             otros_conceptos_diarios=t.get("otros_conceptos_diarios", 0),
             tipo=t.get("tipo_prestaciones", "ley"),
-            uma_diaria=t.get("uma_diaria", 108.57),
+            uma_diaria=t.get("uma_diaria", 117.31),
         )
         resultado = calcular_sdi(p)
         resultado["nss"] = t.get("nss", "")
