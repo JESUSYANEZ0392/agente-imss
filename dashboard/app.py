@@ -76,6 +76,7 @@ menu = st.sidebar.radio("Módulo", [
     "🏠 Dashboard",
     "📁 Cargar SUA",
     "💰 Calcular SDI",
+    "🔍 Confronta SUA vs Cédula",
     "🌐 IDSE / SIPARE",
     "🏥 Incapacidades",
     "⚠️ Prima de Riesgo",
@@ -869,6 +870,126 @@ elif menu == "📊 Comparativos":
                              delta=f"{comp_s.get('variacion_pct', 0):.1f}%")
                 col_b.metric("Estado", comp_s.get("estado_actual", "—"))
                 st.json(comp_s)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔍 CONFRONTA SUA vs CÉDULA
+# ═══════════════════════════════════════════════════════════════════════════
+elif menu == "🔍 Confronta SUA vs Cédula":
+    st.title("🔍 Confronta SUA vs Cédula de Determinación")
+    st.info(
+        "Compara el archivo **.SUA** de tu sistema contra la **Cédula XLS del IMSS** "
+        "(hojas EMA y EBA). Detecta diferencias en salarios, cuotas patronales y obreras."
+    )
+
+    col1, col2 = st.columns(2)
+    archivo_sua = col1.file_uploader("Archivo SUA", type=["sua", "SUA", "txt"],
+                                     key="confronta_sua")
+    archivo_xls = col2.file_uploader("Cédula IMSS (.xls / .xlsx)",
+                                     type=["xls", "xlsx"], key="confronta_xls")
+
+    if archivo_sua and archivo_xls:
+        if st.button("🔍 Iniciar Confronta", type="primary"):
+            with st.spinner("Analizando diferencias..."):
+                try:
+                    from modules.confronta import confrontar_desde_bytes
+                    resultado = confrontar_desde_bytes(
+                        archivo_sua.read(), archivo_xls.read(),
+                        archivo_sua.name, archivo_xls.name
+                    )
+
+                    # ── Resumen ejecutivo ─────────────────────────────────
+                    st.divider()
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("Trabajadores en SUA", resultado.total_trabajadores_sua)
+                    col_b.metric("Trabajadores en Cédula", resultado.total_trabajadores_xls)
+                    col_c.metric("Diferencias encontradas", len(resultado.diferencias),
+                                 delta="OK" if not resultado.diferencias else "Revisar",
+                                 delta_color="normal" if not resultado.diferencias else "inverse")
+
+                    # ── Semáforo general ──────────────────────────────────
+                    if resultado.todo_ok:
+                        st.success("✅ **TODO COINCIDE** — SUA y Cédula IMSS están en sincronía.")
+                    elif resultado.tiene_errores:
+                        st.error("🔴 **SE ENCONTRARON DIFERENCIAS SIGNIFICATIVAS** — Revisa los detalles abajo.")
+                    else:
+                        st.warning("⚠️ **HAY DIFERENCIAS MENORES** — Posiblemente por redondeo. Verifica.")
+
+                    # ── Totales globales ──────────────────────────────────
+                    if resultado.resumen_totales:
+                        st.subheader("Totales Globales")
+                        tot = resultado.resumen_totales
+                        c1, c2, c3 = st.columns(3)
+
+                        if "sua_cuotas_imss" in tot:
+                            c1.metric("Cuotas IMSS — SUA", f"${tot['sua_cuotas_imss']:,.2f}")
+                            c2.metric("Cuotas IMSS — Cédula", f"${tot['xls_cuotas_imss']:,.2f}")
+                            diff_color = "normal" if tot["match_imss"] else "inverse"
+                            c3.metric("Diferencia IMSS", f"${tot['diff_imss']:,.2f}",
+                                      delta="✅ Match" if tot["match_imss"] else "⚠️ Revisar",
+                                      delta_color=diff_color)
+
+                            c4, c5, c6 = st.columns(3)
+                            c4.metric("INFONAVIT — SUA", f"${tot['sua_infonavit']:,.2f}")
+                            c5.metric("INFONAVIT — Cédula", f"${tot['xls_infonavit']:,.2f}")
+                            c6.metric("Diferencia INFONAVIT", f"${tot['diff_infonavit']:,.2f}",
+                                      delta="✅ Match" if tot["match_infonavit"] else "⚠️ Revisar",
+                                      delta_color="normal" if tot["match_infonavit"] else "inverse")
+                        else:
+                            c1.metric("Cuotas IMSS Cédula", f"${tot.get('xls_cuotas_imss', 0):,.2f}")
+                            c2.metric("RCV Cédula", f"${tot.get('xls_rcv', 0):,.2f}")
+                            c3.metric("INFONAVIT Cédula", f"${tot.get('xls_infonavit', 0):,.2f}")
+
+                    # ── Trabajadores en un solo lado ──────────────────────
+                    if resultado.trabajadores_solo_sua:
+                        st.subheader("⚠️ En SUA pero NO en Cédula")
+                        for t in resultado.trabajadores_solo_sua:
+                            st.markdown(f'<div class="alerta-amarilla">NSS {t}</div>',
+                                        unsafe_allow_html=True)
+
+                    if resultado.trabajadores_solo_xls:
+                        st.subheader("⚠️ En Cédula pero NO en SUA")
+                        for t in resultado.trabajadores_solo_xls:
+                            st.markdown(f'<div class="alerta-roja">NSS {t}</div>',
+                                        unsafe_allow_html=True)
+
+                    # ── Tabla de diferencias por trabajador ───────────────
+                    if resultado.diferencias:
+                        st.subheader("Diferencias Detalladas por Trabajador")
+                        data_dif = []
+                        for d in sorted(resultado.diferencias, key=lambda x: x.nivel, reverse=True):
+                            emoji = "🔴" if d.nivel == "error" else "⚠️"
+                            data_dif.append({
+                                "Estado": emoji,
+                                "NSS": d.nss,
+                                "Nombre": d.nombre,
+                                "Campo": d.campo,
+                                "Valor SUA": f"${d.valor_sua:,.2f}" if isinstance(d.valor_sua, float) else d.valor_sua,
+                                "Valor Cédula": f"${d.valor_xls:,.2f}" if isinstance(d.valor_xls, float) else d.valor_xls,
+                                "Diferencia": f"${d.diferencia:,.2f}",
+                                "Descripción": d.mensaje,
+                            })
+                        st.dataframe(pd.DataFrame(data_dif), use_container_width=True)
+
+                        # Exportar
+                        from reports.exporter import exportar_comparativo_excel
+                        import tempfile, os
+                        df_exp = pd.DataFrame(data_dif)
+                        tmp = os.path.join(str(ROOT / "reportes"),
+                                           f"confronta_{date.today().strftime('%Y%m%d')}.xlsx")
+                        df_exp.to_excel(tmp, index=False)
+                        with open(tmp, "rb") as f:
+                            st.download_button("📥 Exportar diferencias a Excel", f,
+                                               file_name=os.path.basename(tmp))
+                    else:
+                        if not resultado.todo_ok:
+                            st.info("Las diferencias son solo a nivel de totales globales — no hay discrepancias por trabajador individual.")
+
+                except Exception as e:
+                    import traceback
+                    st.error(f"Error al procesar la confronta: {e}")
+                    with st.expander("Detalle técnico"):
+                        st.code(traceback.format_exc())
 
 
 # ═══════════════════════════════════════════════════════════════════════════
